@@ -1,11 +1,11 @@
 import PouchDB from 'pouchdb'
-var secret = require('../../secret')
+import secret from '../../now.json'
 
 PouchDB.plugin(require('pouchdb-find').default)
 
 var db = new PouchDB('ebauche')
 // var remoteCouch = 'http://admin:admin@localhost:5984/ebauche'
-var remoteCouch = secret.couchdbURL
+var remoteCouch = secret.env.couchdbURL
 
 function syncError (err) {
   console.error(err)
