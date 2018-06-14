@@ -4,9 +4,11 @@
     <div class="drawing-tools" v-else>
       <mini-gallery @create-new-canvas="createNewCanvas" @open-old-canvas="openOldCanvas"></mini-gallery>
       <push-screen-button @send-sketch-to-story="sendSketchToStory"></push-screen-button>
-      <!--<take-pic-button :current-sketch-url="currentSketchURL"></take-pic-button>-->
+      <take-pic-button @new-photograph="registerNewPhotograph"></take-pic-button>
     </div>
-    <iframe id="drawing-canvas" src=""></iframe>
+    <iframe id="drawing-canvas" src="" allowtransparency="true"></iframe>
+    <video id="photo-video"></video>
+    <canvas id="photo-canvas"></canvas>
   </div>
 </template>
 
@@ -276,6 +278,25 @@ export default {
         console.log(`${window.webstrateUrl}/${canvasURL}`)
         document.querySelector('#drawing-canvas').setAttribute('src', `${window.webstrateUrl}/${canvasURL}`)
         this.currentSketchURL = canvasURL
+        store.db.find({include_docs: true, selector: {type: 'canvas', canvasId: this.currentSketchURL}})
+          .then((docs) => {
+            if (docs.docs.length > 0) {
+              if (docs.docs[0].photograph) {
+                let image = new Image()
+
+                let canvas = document.querySelector('#photo-canvas')
+
+                // Context object for working with the canvas.
+                let context = canvas.getContext('2d')
+
+                // Draw a copy of the current frame from the video on the canvas.
+                image.onload = () => {
+                  context.drawImage(image, 0, 0)
+                }
+                image.src = docs.docs[0].photograph
+              }
+            }
+          })
       }
     },
     createNewCanvas: function () {
@@ -322,6 +343,18 @@ export default {
           console.log(err)
         }
       })
+    },
+    registerNewPhotograph: function (imageData) {
+      store.db.find({include_docs: true, selector: {type: 'canvas', canvasId: this.currentSketchURL}})
+        .then((docs) => {
+          if (docs.docs.length > 0) {
+            let doc = docs.docs[0]
+            doc.photograph = imageData
+            store.db.put(doc)
+          }
+        }).catch((err) => {
+          console.error(err)
+        })
     }
   },
   components: {
@@ -348,6 +381,24 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
+}
+
+#photo-video {
+  width: 100vw;
+  height: 100vh;
+  z-index: -4;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+#photo-canvas {
+  width: 100vw;
+  height: 100vh;
+  z-index: -5;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 </style>
