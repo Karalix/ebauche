@@ -59,7 +59,7 @@ export default {
       let video = document.querySelector('#photo-video')
       video.style.visibility = 'visible'
 
-      navigator.mediaDevices.getUserMedia({video: true, audio: false}).then((stream) => {
+      navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}, audio: false}).then((stream) => {
         let video = document.querySelector('#photo-video')
         this.stream = stream
         video.srcObject = stream
