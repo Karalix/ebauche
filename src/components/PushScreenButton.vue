@@ -43,7 +43,7 @@ export default {
       var notification = document.querySelector('.mdl-js-snackbar')
       notification.MaterialSnackbar.showSnackbar(
         {
-          message: `🚀👌 ${storyId} 👍`
+          message: `🚀 ${storyId} 👍`
         }
       )
       this.$emit('send-sketch-to-story', `${storyId}`)

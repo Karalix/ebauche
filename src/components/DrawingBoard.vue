@@ -18,6 +18,7 @@ import MiniGallery from './MiniGallery'
 import PushScreenButton from './PushScreenButton'
 import TakePicButton from './TakePicButton'
 import store from '../store'
+import log from '../logging'
 
 let animalList = [
   'aardvark',
@@ -264,8 +265,22 @@ export default {
     return {
       drawingCanvasURL: '/ebauche-canvas',
       showWelcomePopup: true,
-      currentSketchURL: ''
+      currentSketchURL: '',
+      userId: ''
     }
+  },
+  created: function () {
+    this.userId = localStorage.getItem('userId')
+    if(!this.userId) {
+      this.userId = Math.floor(Math.random() * Math.floor(10000))
+      localStorage.setItem('userId', this.userId)
+    }
+
+    window.addEventListener('message', (event) => {
+      if(event.data === 'user-id') {
+        document.querySelector('#drawing-canvas').contentWindow.postMessage(`user-id-${this.userId}`,'*')
+      }
+    })
   },
   methods: {
     switchCanvas: function (canvasURL) {
@@ -275,7 +290,6 @@ export default {
         this.currentSketchURL = newId
         return newId
       } else {
-        console.log(`${window.webstrateUrl}/${canvasURL}`)
         document.querySelector('#drawing-canvas').setAttribute('src', `${window.webstrateUrl}/${canvasURL}`)
         this.currentSketchURL = canvasURL
         store.db.find({include_docs: true, selector: {type: 'canvas', canvasId: this.currentSketchURL}})
@@ -301,8 +315,10 @@ export default {
     },
     createNewCanvas: function () {
       this.showWelcomePopup = false
+      let newSketchID = this.switchCanvas()
+      log.logCanvasOperation(newSketchID, 'create-canvas', `${this.userId}`)
       store.db.post({
-        canvasId: this.switchCanvas(),
+        canvasId: newSketchID,
         created_at: new Date(),
         type: 'canvas'
       }, (err, result) => {
@@ -314,6 +330,7 @@ export default {
     openOldCanvas: function (canvasId) {
       this.showWelcomePopup = false
       this.switchCanvas(canvasId)
+      log.logCanvasOperation(canvasId, 'open-canvas', `${this.userId}`)
     },
     createId: function () {
       let rdAnimal = animalList[Math.floor(Math.random() * (animalList.length))]
@@ -331,6 +348,7 @@ export default {
           doc.current = ind
         }
         store.db.put(doc)
+        log.logCanvasOperation(this.currentSketchURL, `push-canvas-${storyId}`, `${this.userId}`)
       }).catch((err) => {
         if (err.message === 'missing') {
           store.db.put({
@@ -339,6 +357,7 @@ export default {
             current: 0,
             type: 'story'
           })
+          log.logCanvasOperation(this.currentSketchURL, `push-canvas-${storyId}`, `${this.userId}`)
         } else {
           console.log(err)
         }
@@ -351,6 +370,7 @@ export default {
             let doc = docs.docs[0]
             doc.photograph = imageData
             store.db.put(doc)
+          log.logCanvasOperation(this.currentSketchURL, 'add-photos', `${this.userId}`)
           }
         }).catch((err) => {
           console.error(err)
