@@ -8,7 +8,7 @@ import 'material-design-lite/material.min.js'
 
 Vue.config.productionTip = false
 
-window.webstrateUrl = 'https://webstrates.cs.au.dk/'
+window.webstrateUrl = 'https://demo.webstrates.net/'
 
 /* eslint-disable no-new */
 

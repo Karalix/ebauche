@@ -2,12 +2,13 @@
   <div class="drawing-board">
     <welcome-popup @create-new-canvas="createNewCanvas" @open-old-canvas="openOldCanvas" v-if="showWelcomePopup"></welcome-popup>
     <div class="drawing-tools" v-else>
-      <mini-gallery @create-new-canvas="createNewCanvas" @open-old-canvas="openOldCanvas"></mini-gallery>
+      <mini-gallery @create-new-canvas="createNewCanvas" @open-old-canvas="openOldCanvas" :current-sketch="currentSketchURL"></mini-gallery>
       <push-screen-button @send-sketch-to-story="sendSketchToStory"></push-screen-button>
-      <take-pic-button @new-photograph="registerNewPhotograph"></take-pic-button>
+      <duplicate-button @duplicate-canvas="copyCanvas"></duplicate-button>
     </div>
     <iframe id="drawing-canvas" src="" allowtransparency="true"></iframe>
     <video id="photo-video"></video>
+    <img id="photo-img"/>
     <canvas id="photo-canvas"></canvas>
   </div>
 </template>
@@ -16,7 +17,7 @@
 import WelcomePopup from './WelcomePopup'
 import MiniGallery from './MiniGallery'
 import PushScreenButton from './PushScreenButton'
-import TakePicButton from './TakePicButton'
+import DuplicateButton from './DuplicateButton'
 import store from '../store'
 import log from '../logging'
 
@@ -271,14 +272,14 @@ export default {
   },
   created: function () {
     this.userId = localStorage.getItem('userId')
-    if(!this.userId) {
+    if (!this.userId) {
       this.userId = Math.floor(Math.random() * Math.floor(10000))
       localStorage.setItem('userId', this.userId)
     }
 
     window.addEventListener('message', (event) => {
-      if(event.data === 'user-id') {
-        document.querySelector('#drawing-canvas').contentWindow.postMessage(`user-id-${this.userId}`,'*')
+      if (event.data === 'user-id') {
+        document.querySelector('#drawing-canvas').contentWindow.postMessage(`user-id-${this.userId}`, '*')
       }
     })
   },
@@ -296,7 +297,7 @@ export default {
           .then((docs) => {
             if (docs.docs.length > 0) {
               if (docs.docs[0].photograph) {
-                let image = new Image()
+                let image = document.querySelector('#photo-img')
 
                 let canvas = document.querySelector('#photo-canvas')
 
@@ -305,7 +306,7 @@ export default {
 
                 // Draw a copy of the current frame from the video on the canvas.
                 image.onload = () => {
-                  context.drawImage(image, 0, 0)
+                  context.drawImage(image, 0, 0, document.querySelector('#photo-canvas').clientWidth, document.querySelector('#photo-canvas').clientHeight)
                 }
                 image.src = docs.docs[0].photograph
               }
@@ -313,10 +314,30 @@ export default {
           })
       }
     },
+    switchCopyCanvas: function (originalCanvasURL) {
+      let newId = `sketch-${this.createId()}`
+      document.querySelector('#drawing-canvas').setAttribute('src', `${window.webstrateUrl}/${originalCanvasURL}/?copy=${newId}`)
+      this.currentSketchURL = newId
+      return newId
+    },
     createNewCanvas: function () {
       this.showWelcomePopup = false
       let newSketchID = this.switchCanvas()
       log.logCanvasOperation(newSketchID, 'create-canvas', `${this.userId}`)
+      store.db.post({
+        canvasId: newSketchID,
+        created_at: new Date(),
+        type: 'canvas'
+      }, (err, result) => {
+        if (!err) {
+          console.log('Successfully posted a canvas !')
+        }
+      })
+    },
+    copyCanvas: function () {
+      this.showWelcomePopup = false
+      let newSketchID = this.switchCopyCanvas(this.currentSketchURL)
+      log.logCanvasOperation(newSketchID, 'copy-canvas', `${this.userId}`)
       store.db.post({
         canvasId: newSketchID,
         created_at: new Date(),
@@ -334,7 +355,7 @@ export default {
     },
     createId: function () {
       let rdAnimal = animalList[Math.floor(Math.random() * (animalList.length))]
-      let rdNumber = Math.floor(Math.random() * 1000)
+      let rdNumber = Math.floor(Math.random() * 10000)
 
       return `${rdAnimal}-${rdNumber}`
     },
@@ -370,7 +391,7 @@ export default {
             let doc = docs.docs[0]
             doc.photograph = imageData
             store.db.put(doc)
-          log.logCanvasOperation(this.currentSketchURL, 'add-photos', `${this.userId}`)
+            log.logCanvasOperation(this.currentSketchURL, 'add-photos', `${this.userId}`)
           }
         }).catch((err) => {
           console.error(err)
@@ -381,7 +402,7 @@ export default {
     WelcomePopup,
     MiniGallery,
     PushScreenButton,
-    TakePicButton
+    DuplicateButton
   }
 }
 </script>
@@ -412,10 +433,19 @@ export default {
   left: 0;
 }
 
-#photo-canvas {
+#photo-img {
   width: 100vw;
   height: 100vh;
   z-index: -5;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+#photo-canvas {
+  width: 100vw;
+  height: 100vh;
+  z-index: -6;
   position: fixed;
   top: 0;
   left: 0;

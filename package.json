@@ -9,7 +9,8 @@
     "start": "npm run dev",
     "now-start":"node index.js",
     "lint": "eslint --ext .js,.vue src",
-    "build": "node build/build.js"
+    "build": "node build/build.js",
+    "deploy": "node build/build.js ; firebase deploy"
   },
   "dependencies": {
     "material-design-lite": "^1.3.0",

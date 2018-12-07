@@ -17,7 +17,8 @@ export default {
   data: function () {
     return {
       canvas: [],
-      dbListener: null
+      dbListener: null,
+      intervalId: 0
     }
   },
   computed: {
@@ -27,17 +28,25 @@ export default {
       })
     }
   },
+  props: [
+    'currentSketch'
+  ],
   methods: {
     createNewCanvas: function () {
       this.$emit('create-new-canvas')
     },
-    openOldCanvas: function (canvasId) {
+    highlightItem: function () {
       let buttons = document.querySelectorAll('.mini-gallery-canvas-button')
       buttons.forEach(element => {
         element.classList.remove('selected')
       })
-      let element = document.querySelector('#mini-gallery-' + canvasId)
-      element.classList.add('selected')
+      let element = document.querySelector('#mini-gallery-' + this.currentSketch)
+      if (element) {
+        element.classList.add('selected')
+      }
+    },
+    openOldCanvas: function (canvasId) {
+      this.highlightItem()
       this.$emit('open-old-canvas', canvasId)
     },
     refreshDocs: function () {
@@ -65,7 +74,13 @@ export default {
     })
   },
   beforeDestroy: function () {
+    clearInterval(this.intervalId)
     this.dbListener.cancel()
+  },
+  mounted: function () {
+    this.intervalId = setInterval(() => {
+      this.highlightItem()
+    }, 500)
   }
 }
 </script>
@@ -88,7 +103,8 @@ export default {
   position: fixed;
   left: 20px;
   bottom: 0px;
-  height: 100vh;
+  height: fit-content;
+  max-height: 100vh;
   overflow: scroll;
   text-align: left;
 }
